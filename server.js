@@ -1,11 +1,15 @@
 const express = require('express');
 const axios = require('axios');
+const cors = require('cors'); // Import the CORS package
 const app = express();
 const port = 3000;
 
 // Telegram Bot Token
 const botToken = '7758299226:AAGl2ClQc6ZAUQFkfDvNXL0V4imtU1GQZUg';
 
+// Allow CORS (cross-origin requests) from any origin or specify your Flutter app domain
+app.use(cors()); // Enable CORS for all origins (for testing)
+ 
 let imageUrls = []; // Store image URLs for later use
 
 // Function to get updates from Telegram
