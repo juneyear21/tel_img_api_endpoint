@@ -4,50 +4,62 @@ const app = express();
 const port = 3000;
 
 // Telegram Bot Token
-const botToken = '7758299226:AAGl2ClQc6ZAUQFkfDvNXL0V4imtU1GQZUg';
+const botToken = '7758299226:AAGl2ClQc6ZAUQFkfDvNXL0V4imtU1GQZUg'; // Replace with your bot's token
 
-let imageUrls = []; // Store image URLs for later use
+let imageUrls = []; // Store image URLs
 
-// Function to get updates from Telegram
-async function getUpdates() {
+// Middleware to parse incoming JSON
+app.use(express.json());
+
+// Webhook endpoint
+app.post('/webhook', async (req, res) => {
   try {
-    const response = await axios.get(`https://api.telegram.org/bot${botToken}/getUpdates`);
-    const updates = response.data.result;
+    const update = req.body;
 
-    if (updates.length > 0) {
-      updates.forEach(async (update) => {
-        if (update.message && update.message.photo) {
-          // Extract file_id
-          const fileId = update.message.photo[update.message.photo.length - 1].file_id;
-          console.log('File ID:', fileId);
-          
-          // Call getFile method to fetch the file path
-          const fileResponse = await axios.get(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`);
-          const filePath = fileResponse.data.result.file_path;
-          console.log('File Path:', filePath);
+    if (update.message && update.message.photo) {
+      // Extract the largest photo file_id
+      const fileId = update.message.photo[update.message.photo.length - 1].file_id;
+      console.log('File ID:', fileId);
 
-          // Now you can create the download URL
-          const fileUrl = `https://api.telegram.org/file/bot${botToken}/${filePath}`;
-          console.log('File URL:', fileUrl);
-          
-          // Store the image URL in the array
-          imageUrls.push(fileUrl);
-        }
-      });
+      // Fetch the file path
+      const fileResponse = await axios.get(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`);
+      const filePath = fileResponse.data.result.file_path;
+      console.log('File Path:', filePath);
+
+      // Create the file URL
+      const fileUrl = `https://api.telegram.org/file/bot${botToken}/${filePath}`;
+      console.log('File URL:', fileUrl);
+
+      // Add the image URL to the array
+      imageUrls.push(fileUrl);
     }
+
+    // Respond to Telegram
+    res.sendStatus(200);
   } catch (error) {
-    console.error('Error fetching updates:', error);
+    console.error('Error processing webhook:', error);
+    res.sendStatus(500);
   }
-}
+});
 
 // Expose an endpoint to get the latest image URLs
 app.get('/image', (req, res) => {
   res.json({ images: imageUrls });
 });
 
-// Set an interval to check for updates
-setInterval(getUpdates, 5000); // Fetch updates every 5 seconds
+// Set webhook (run this once to configure the bot)
+async function setWebhook() {
+  const webhookUrl = `https://tel-img-api-endpoint.onrender.com/webhook`; // Replace with your public URL
+  try {
+    const response = await axios.get(`https://api.telegram.org/bot${botToken}/setWebhook?url=${webhookUrl}`);
+    console.log('Webhook set successfully:', response.data);
+  } catch (error) {
+    console.error('Error setting webhook:', error);
+  }
+}
 
-app.listen(port, () => {
+// Start the server
+app.listen(port, async () => {
   console.log(`Server running on port ${port}`);
+  await setWebhook(); // Configure the webhook when the server starts
 });
