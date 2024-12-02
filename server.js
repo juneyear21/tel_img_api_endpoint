@@ -1,15 +1,24 @@
 const express = require('express');
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 const app = express();
 const port = 3000;
 
 // Telegram Bot Token
 const botToken = '7758299226:AAGl2ClQc6ZAUQFkfDvNXL0V4imtU1GQZUg'; // Replace with your bot's token
 
-let imageUrls = []; // Store image URLs
+// Create a directory to save images
+const imagesDir = path.join(__dirname, 'images');
+if (!fs.existsSync(imagesDir)) {
+  fs.mkdirSync(imagesDir, { recursive: true });
+}
 
 // Middleware to parse incoming JSON
 app.use(express.json());
+
+// Serve static files from the images folder
+app.use('/images', express.static(imagesDir));
 
 // Webhook endpoint
 app.post('/webhook', async (req, res) => {
@@ -30,8 +39,30 @@ app.post('/webhook', async (req, res) => {
       const fileUrl = `https://api.telegram.org/file/bot${botToken}/${filePath}`;
       console.log('File URL:', fileUrl);
 
-      // Add the image URL to the array
-      imageUrls.push(fileUrl);
+      // Download and save the file
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `image-${timestamp}.jpg`;
+      const fileSavePath = path.join(imagesDir, filename);
+
+      const fileStream = fs.createWriteStream(fileSavePath);
+      const response = await axios({
+        url: fileUrl,
+        method: 'GET',
+        responseType: 'stream',
+      });
+      response.data.pipe(fileStream);
+
+      // Wait for the file to finish saving
+      await new Promise((resolve, reject) => {
+        fileStream.on('finish', resolve);
+        fileStream.on('error', reject);
+      });
+
+      console.log(`Image saved: ${fileSavePath}`);
+
+      // Add the public URL to the array
+      const publicUrl = `/images/${filename}`;
+      imageUrls.push(publicUrl);
     }
 
     // Respond to Telegram
@@ -61,5 +92,5 @@ async function setWebhook() {
 // Start the server
 app.listen(port, async () => {
   console.log(`Server running on port ${port}`);
-  await setWebhook(); // Configure the webhook when the server start
+  await setWebhook(); // Configure the webhook when the server starts
 });
