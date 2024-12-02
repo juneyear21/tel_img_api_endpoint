@@ -8,6 +8,9 @@ const port = 3000;
 // Telegram Bot Token
 const botToken = '7758299226:AAGl2ClQc6ZAUQFkfDvNXL0V4imtU1GQZUg'; // Replace with your bot's token
 
+// Global array to store image URLs
+let imageUrls = [];
+
 // Create a directory to save images
 const imagesDir = path.join(__dirname, 'images');
 if (!fs.existsSync(imagesDir)) {
@@ -60,7 +63,7 @@ app.post('/webhook', async (req, res) => {
 
       console.log(`Image saved: ${fileSavePath}`);
 
-      // Add the public URL to the array
+      // Add the public URL to the global imageUrls array
       const publicUrl = `/images/${filename}`;
       imageUrls.push(publicUrl);
     }
